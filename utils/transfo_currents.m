@@ -69,7 +69,7 @@ curr_struc = struct('lat', lat_combined, 'lon', lon_combined, ...
                    'curr', complex(u_all, v_all));
 
 % Sauvegarde de la structure
-save('inputs/curr_struc', 'curr_struc');
+save('outputs/curr_struc', 'curr_struc');
 
 %% write currents
 ga_write_ariane_currents(curr_struc,'test')

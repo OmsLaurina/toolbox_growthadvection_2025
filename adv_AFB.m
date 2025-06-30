@@ -98,7 +98,7 @@ for t0 = t0_range
     % Find ADT file for each t0
     t0_str = datestr(t0, 'yyyymmdd'); 
 
-    files = dir(['inputs/SWOT/dt_*', t0_str,'_*.nc']);
+    files = dir(['Ariane_workplace/currents_data/SWOT/dt_*', t0_str,'_*.nc']);
     if isempty(files), warning(['no file for ', t0_str]), continue, end
     filename = fullfile(files(1).folder, files(1).name);
     lon = ncread(filename, 'longitude');

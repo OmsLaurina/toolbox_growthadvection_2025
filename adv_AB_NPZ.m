@@ -51,13 +51,17 @@ for v = 1:length(plankton_model_outputs)
 end
 
 % Nsupply & Gmax values
-Nsupply_B = 0.048;
-Nsupply_A = 0.052;
+Nsupply_B = 0.05;%0.048;
+Nsupply_A = 0.05;%0.052;
 
+Gmax1_A = 3.89;
 Gmax1_B = 3.89;
-Gmax1_A = 3.89+1;
-Gmax2_B = 0.43;
-Gmax2_A = 0.43+1;
+Gmax2_A = 0.43;
+Gmax2_B = 0.43; 
+
+% Import Gmax matrices (from F_GMM.py)
+Gmax1 = readmatrix('outputs/Gmax1_AB.csv');
+Gmax2 = readmatrix('outputs/Gmax2_AB.csv');
 
 % Ariane
 global dir_ariane_global
@@ -80,7 +84,7 @@ for t0 = t0_range
     % Find ADT file for each t0
     t0_str = datestr(t0, 'yyyymmdd'); 
 
-    files = dir(['inputs/SWOT/dt_*', t0_str,'_*.nc']);
+    files = dir(['Ariane_workplace/currents_data/SWOT/dt_*', t0_str,'_*.nc']);
     if isempty(files), warning(['no file for ', t0_str]), continue, end
     filename = fullfile(files(1).folder, files(1).name);
     lon = ncread(filename, 'longitude');
@@ -111,13 +115,11 @@ for t0 = t0_range
     nlat = length(lat_idx);
     ntime = length(positions.time);
 
-    folder = 'inputs/SWOT/';
+    folder = 'Ariane_workplace/currents_data/SWOT/';
     file_prefix = 'dt_global_allsat_phy_l4_';
     file_suffix = '_20240501.nc';
 
     Nsupply = NaN(nlon, nlat, ntime);
-    Gmax1 = NaN(nlon, nlat, ntime);
-    Gmax2 = NaN(nlon, nlat, ntime);
 
     for day = 0:nb_days_advec-1
         current_date = t0 + days(day);
@@ -137,17 +139,8 @@ for t0 = t0_range
 
             Nsupply(:,:,t_idx) = Nsupply_A .* lat_mask + ...
                 ((Nsupply_A .* (adt_day < adt_threshold) + Nsupply_B .* (adt_day >= adt_threshold)) .* (~lat_mask));
-
-            Gmax1(:,:,t_idx) = Gmax1_A .* lat_mask + ...
-                ((Gmax1_A .* (adt_day < adt_threshold) + Gmax1_B .* (adt_day >= adt_threshold)) .* (~lat_mask));
-
-            Gmax2(:,:,t_idx) = Gmax2_A .* lat_mask + ...
-                ((Gmax2_A .* (adt_day < adt_threshold) + Gmax2_B .* (adt_day >= adt_threshold)) .* (~lat_mask));
         end
     end
-
-    Gmax1(Gmax1==0) = NaN;
-    Gmax2(Gmax2==0) = NaN;
 
     % Run the plankton model to get equilibrium values
     tvec = 1:dt:2000;
@@ -168,8 +161,6 @@ for t0 = t0_range
     for i = 1:Npart
 
         Nsupply_series = NaN(1, Ntime);
-        Gmax1_series = NaN(1, Ntime);
-        Gmax2_series = NaN(1, Ntime);
 
         % Generate the time series for Nsupply and Gmax
         for t = 1:Ntime
@@ -179,9 +170,10 @@ for t0 = t0_range
             [~, idx_lat] = min(abs(lat_sub - lat_i));
 
             Nsupply_series(t) = Nsupply(idx_lon, idx_lat, t);
-            Gmax1_series(t) = Gmax1(idx_lon, idx_lat, t);
-            Gmax2_series(t) = Gmax2(idx_lon, idx_lat, t);
         end
+
+        Gmax1_series = Gmax1(idx_lon, idx_lat);
+        Gmax2_series = Gmax2(idx_lon, idx_lat);
 
         % Get the initial equilibrium concentrations for A and B
         Nsupply_ini = Nsupply_series(1);

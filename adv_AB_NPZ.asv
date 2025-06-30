@@ -1,4 +1,4 @@
-%% Test passive process: "Boundary" hypothesis
+%% Composite cartes biomasses NPZ advectées au 6 mai pour plusieurs t0
 
 close all, clear all
 
@@ -18,8 +18,7 @@ min_lon = 4; max_lon = 6;
 min_lat = 40; max_lat = 42;
 
 % ADT (Absolute Dynamic Topography) threshold for the front 
-adt_threshold_A = -0.06;
-adt_threshold_B = -0.04; 
+adt_threshold = -0.05;
 
 % Date of final maps
 target_date = datetime(2023,5,6);
@@ -52,24 +51,17 @@ for v = 1:length(plankton_model_outputs)
 end
 
 % Nsupply & Gmax values
-Nsupply_A = 0.052; %0.048;
-Nsupply_F = 0.05; %0.052;
-Nsupply_B = 0.048; %0.05;
+Nsupply_B = 0.048;%0.048;
+Nsupply_A = 0.052;%0.052;
 
 Gmax1_A = 3.89;
-Gmax1_F = 3.89+1;
-Gmax1_B = 3.89;
-Gmax2_A = 0.43;
-Gmax2_F = 0.43+1;
-Gmax2_B = 0.43; 
-
-% Import Gmax matrices (from F_GMM.py)
-Gmax1 = readmatrix('outputs/Gmax1_AFB.csv');
-Gmax2 = readmatrix('outputs/Gmax2_AFB.csv');
+Gmax1 = readmatrix('outputs/Gmax1.csv');
+Gmax2 = readmatrix('outputs/Gmax2.csv');
 
 % Ariane
 global dir_ariane_global
 dir_ariane_global = 'Ariane_workplace/';
+
 
 %% --- Upload data --- %%
 
@@ -123,6 +115,8 @@ for t0 = t0_range
     file_suffix = '_20240501.nc';
 
     Nsupply = NaN(nlon, nlat, ntime);
+    Gmax1 = NaN(nlon, nlat, ntime);
+    Gmax2 = NaN(nlon, nlat, ntime);
 
     for day = 0:nb_days_advec-1
         current_date = t0 + days(day);
@@ -135,26 +129,23 @@ for t0 = t0_range
         lat_Nsupply = ncread(filename, 'latitude');
         lat_idx_Nsupply = find(lat_Nsupply >= min_lat & lat_Nsupply <= max_lat);
         lat_sub_Nsupply = lat_Nsupply(lat_idx_Nsupply);
-        
+
         for substep = 1:(1/dt)
             t_idx = round(day/dt) + substep;
             lat_mask = repmat(lat_sub_Nsupply' > 41.5, [nlon,1]);
 
-            Nsupply_tmp = Nsupply_A * (adt_day < adt_threshold_A) + ...
-                      Nsupply_B * (adt_day > adt_threshold_B) + ...
-                      Nsupply_F * (adt_day >= adt_threshold_A & adt_day <= adt_threshold_B);
-            Nsupply(:, :, t_idx) = Nsupply_A .* lat_mask + Nsupply_tmp .* (~lat_mask);
+            Nsupply(:,:,t_idx) = Nsupply_A .* lat_mask + ...
+                ((Nsupply_A .* (adt_day < adt_threshold) + Nsupply_B .* (adt_day >= adt_threshold)) .* (~lat_mask));
         end
     end
+
+    Gmax1(Gmax1==0) = NaN;
+    Gmax2(Gmax2==0) = NaN;
 
     % Run the plankton model to get equilibrium values
     tvec = 1:dt:2000;
     output_A = ga_model_2P1Z_fromNsupplyGmax(Nsupply_A, Gmax1_A, Gmax2_A,'time', tvec);
     CI_A = [output_A.PO4(end), output_A.P1(end), output_A.P2(end), output_A.Z(end)];
-  
-    output_F = ga_model_2P1Z_fromNsupplyGmax(Nsupply_F, Gmax1_F, Gmax2_F, 'time', tvec);
-    CI_F = [output_F.PO4(end), output_F.P1(end), output_F.P2(end), output_F.Z(end)];
-
     output_B = ga_model_2P1Z_fromNsupplyGmax(Nsupply_B, Gmax1_A, Gmax2_A,'time', tvec);
     CI_B = [output_B.PO4(end), output_B.P1(end), output_B.P2(end), output_B.Z(end)];
 
@@ -181,16 +172,13 @@ for t0 = t0_range
             Nsupply_series(t) = Nsupply(idx_lon, idx_lat, t);
         end
 
-        Gmax1_series = Gmax1(idx_lon, idx_lat);
-        Gmax2_series = Gmax2(idx_lon, idx_lat);
+         Gmax1_series = Gmax1(idx_lon, idx_lat);
+         Gmax2_series = Gmax2(idx_lon, idx_lat);
 
         % Get the initial equilibrium concentrations for A and B
         Nsupply_ini = Nsupply_series(1);
         if Nsupply_ini == Nsupply_A
             PO4_ini = CI_A(1); P1_ini = CI_A(2); P2_ini = CI_A(3); Z_ini = CI_A(4);
-
-        elseif Nsupply_ini == Nsupply_F
-            PO4_ini = CI_F(1); P1_ini = CI_F(2); P2_ini = CI_F(3); Z_ini = CI_F(4);
 
         elseif Nsupply_ini == Nsupply_B
             PO4_ini = CI_B(1); P1_ini = CI_B(2); P2_ini = CI_B(3); Z_ini = CI_B(4);
@@ -233,7 +221,7 @@ end
 % Save 
 all_val_NPZ.Longitude = all_lon;
 all_val_NPZ.Latitude = all_lat;
-save('outputs/positionsNPZ_AFB.mat', 'all_val_NPZ');
+save('outputs/positionsNPZ_AB.mat', 'all_val_NPZ');
 
 %% --- Gridded map --- %%
 
@@ -251,7 +239,7 @@ output2D_NPZ.R_P2 = output2D_NPZ.P2 ./ (output2D_NPZ.P1 + output2D_NPZ.P2);
 output2D_NPZ.Btot = output2D_NPZ.P1 + output2D_NPZ.P2;
 
 % Save output
-save('outputs/output2D_AFB_NPZ_activereactive.mat', 'output2D_NPZ')
+save('outputs/output2D_AB_NPZ_activereactive.mat', 'output2D_NPZ')
 
 %% Figures composites au 6 mai
 
@@ -265,7 +253,7 @@ colors_stations(strcmp(tsg_stations.Region, 'A2'), :) = repmat([0.3010 0.7450 0.
 colors_stations(strcmp(tsg_stations.Region, 'F2'), :) = repmat([0.8500 0.3250 0.0980], sum(strcmp(tsg_stations.Region, 'F2')), 1);
 colors_stations(strcmp(tsg_stations.Region, 'B2'), :) = repmat([0.4660 0.6740 0.1880], sum(strcmp(tsg_stations.Region, 'B2')), 1);
 
-% Gridded maps
+% Figures de carte
 varnames_fig = {'PO4', 'P1', 'P2', 'Z', 'R_P1', 'R_P2', 'Btot'};
 titles = {'Masse PO4','Biomasse P1','Biomasse P2', 'Biomasse Z', 'R-ratio P1', 'R-ratio P2', 'Biomasse Tot P'};
 filenames = {'advgrowth_biom_Nsupply_AB_PO4.jpg','advgrowth_biom_Nsupply_AB_P1.jpg',...
