@@ -241,7 +241,7 @@ output2D_NPZ.Btot = output2D_NPZ.P1 + output2D_NPZ.P2;
 % Save output
 save('outputs/output2D_AB_NPZ_activereactive.mat', 'output2D_NPZ')
 
-%% Figures composites au 6 mai
+%% Figures
 
 % for ship track
 colors = zeros(length(tsg_transect.Region), 3); 
@@ -253,7 +253,7 @@ colors_stations(strcmp(tsg_stations.Region, 'A2'), :) = repmat([0.3010 0.7450 0.
 colors_stations(strcmp(tsg_stations.Region, 'F2'), :) = repmat([0.8500 0.3250 0.0980], sum(strcmp(tsg_stations.Region, 'F2')), 1);
 colors_stations(strcmp(tsg_stations.Region, 'B2'), :) = repmat([0.4660 0.6740 0.1880], sum(strcmp(tsg_stations.Region, 'B2')), 1);
 
-% Figures de carte
+% Maps
 varnames_fig = {'PO4', 'P1', 'P2', 'Z', 'R_P1', 'R_P2', 'Btot'};
 titles = {'Masse PO4','Biomasse P1','Biomasse P2', 'Biomasse Z', 'R-ratio P1', 'R-ratio P2', 'Biomasse Tot P'};
 filenames = {'advgrowth_biom_Nsupply_AB_PO4.jpg','advgrowth_biom_Nsupply_AB_P1.jpg',...
